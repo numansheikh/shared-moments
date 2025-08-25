@@ -2,12 +2,16 @@
 
 A React Native web application for displaying photos from Google Drive in a beautiful slideshow format.
 
-## Version 0.0.1 - Initial Beta Release
+## Version 0.1.0 - Folder Selection Release
 
 ### Features
 - ✅ Google Drive OAuth 2.0 Authentication
 - ✅ Photo slideshow with play/pause controls
 - ✅ Full-screen image display with proper aspect ratio
+- ✅ **NEW: Tabbed Settings Interface** (Connection, Folders, Display)
+- ✅ **NEW: Two-Level Folder Selection** (root + subfolders)
+- ✅ **NEW: Multi-Folder Photo Loading** with duplicate prevention
+- ✅ **NEW: Persistent Folder Selection** storage
 - ✅ Customizable UI settings (show/hide elements, opacity control)
 - ✅ Persistent settings storage
 - ✅ Responsive design with semi-transparent control bar
@@ -52,12 +56,20 @@ A React Native web application for displaying photos from Google Drive in a beau
    - Click "Connect to Google Drive"
    - Sign in with your Google account
 
-2. **Configure Shared Folder**
-   - In settings, enter your Google Drive folder URL
+2. **Configure Root Folder**
+   - In settings → Connection tab, enter your Google Drive folder URL
    - Format: `https://drive.google.com/drive/folders/FOLDER_ID`
    - Click "Save URL"
 
-3. **Customize Display**
+3. **Select Folders**
+   - Go to settings → Folders tab
+   - Choose which folders to include in your slideshow:
+     - **Root Folder** - All photos in the main folder
+     - **Subfolders** - Specific folders within the root
+   - Use "Select All" or "Deselect All" for quick selection
+
+4. **Customize Display**
+   - Go to settings → Display tab
    - Toggle email display on/off
    - Toggle navigation controls on/off
    - Toggle photo counter on/off
@@ -101,6 +113,13 @@ REACT_APP_GOOGLE_CLIENT_SECRET=your_google_client_secret
 - **"No photos loading"**: Verify folder permissions and URL format
 
 ### Version History
+
+- **v0.1.0**: Folder selection release with enhanced functionality
+  - Tabbed settings interface (Connection, Folders, Display)
+  - Two-level folder selection (root + subfolders)
+  - Multi-folder photo loading with duplicate prevention
+  - Persistent folder selection storage
+  - Improved error handling and navigation
 
 - **v0.0.1**: Initial beta release with core functionality
   - Google Drive integration
