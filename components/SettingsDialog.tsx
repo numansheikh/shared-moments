@@ -19,6 +19,14 @@ interface SettingsDialogProps {
   isAuthenticated: boolean;
   userEmail?: string;
   onAuthStateChange: (user: GoogleUser | null) => void;
+  showEmail: boolean;
+  onShowEmailChange: (value: boolean) => void;
+  showControls: boolean;
+  onShowControlsChange: (value: boolean) => void;
+  showPhotoCounter: boolean;
+  onShowPhotoCounterChange: (value: boolean) => void;
+  topBarOpacity: number;
+  onTopBarOpacityChange: (value: number) => void;
 }
 
 export default function SettingsDialog({ 
@@ -26,7 +34,15 @@ export default function SettingsDialog({
   onClose, 
   isAuthenticated, 
   userEmail,
-  onAuthStateChange
+  onAuthStateChange,
+  showEmail,
+  onShowEmailChange,
+  showControls,
+  onShowControlsChange,
+  showPhotoCounter,
+  onShowPhotoCounterChange,
+  topBarOpacity,
+  onTopBarOpacityChange
 }: SettingsDialogProps) {
   const [sharedFolderUrl, setSharedFolderUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -216,6 +232,66 @@ export default function SettingsDialog({
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* UI Settings */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Display Settings</Text>
+              
+              {/* Show Email Toggle */}
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Show Email</Text>
+                <TouchableOpacity 
+                  style={[styles.toggleButton, { backgroundColor: showEmail ? '#10B981' : '#6B7280' }]}
+                  onPress={() => onShowEmailChange(!showEmail)}
+                >
+                  <Text style={styles.toggleButtonText}>{showEmail ? 'ON' : 'OFF'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Show Controls Toggle */}
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Show Controls</Text>
+                <TouchableOpacity 
+                  style={[styles.toggleButton, { backgroundColor: showControls ? '#10B981' : '#6B7280' }]}
+                  onPress={() => onShowControlsChange(!showControls)}
+                >
+                  <Text style={styles.toggleButtonText}>{showControls ? 'ON' : 'OFF'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Show Photo Counter Toggle */}
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Show Photo Counter</Text>
+                <TouchableOpacity 
+                  style={[styles.toggleButton, { backgroundColor: showPhotoCounter ? '#10B981' : '#6B7280' }]}
+                  onPress={() => onShowPhotoCounterChange(!showPhotoCounter)}
+                >
+                  <Text style={styles.toggleButtonText}>{showPhotoCounter ? 'ON' : 'OFF'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Top Bar Opacity Slider */}
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Top Bar Opacity: {Math.round(topBarOpacity * 100)}%</Text>
+                <View style={styles.sliderContainer}>
+                  <TouchableOpacity 
+                    style={styles.sliderButton}
+                    onPress={() => onTopBarOpacityChange(Math.max(0, topBarOpacity - 0.1))}
+                  >
+                    <Text style={styles.sliderButtonText}>-</Text>
+                  </TouchableOpacity>
+                  <View style={styles.sliderTrack}>
+                    <View style={[styles.sliderFill, { width: `${topBarOpacity * 100}%` }]} />
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.sliderButton}
+                    onPress={() => onTopBarOpacityChange(Math.min(1, topBarOpacity + 0.1))}
+                  >
+                    <Text style={styles.sliderButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
           </View>
 
           {/* Footer */}
@@ -364,5 +440,61 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#374151',
+  },
+  settingLabel: {
+    color: '#ffffff',
+    fontSize: 16,
+    flex: 1,
+  },
+  toggleButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  toggleButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  sliderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginLeft: 16,
+  },
+  sliderButton: {
+    backgroundColor: '#6B7280',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+    marginHorizontal: 4,
+  },
+  sliderButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  sliderTrack: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#374151',
+    borderRadius: 4,
+    marginHorizontal: 8,
+    overflow: 'hidden',
+  },
+  sliderFill: {
+    height: '100%',
+    backgroundColor: '#10B981',
+    borderRadius: 4,
   },
 });

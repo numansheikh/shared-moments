@@ -15,6 +15,7 @@ class GoogleAuthService {
   constructor() {
     this.configureGoogleSignIn();
     this.checkForOAuthCompletion();
+    this.loadStoredAuth();
   }
 
   private configureGoogleSignIn() {
@@ -24,8 +25,14 @@ class GoogleAuthService {
   }
 
   private buildAuthUrl(): string {
+    const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      throw new Error('REACT_APP_GOOGLE_CLIENT_ID not found in environment variables');
+    }
+    console.log('🔧 Client ID (from env):', clientId);
+    
     const params = new URLSearchParams({
-      client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_CLIENT_ID',
+      client_id: clientId,
       redirect_uri: 'http://localhost:8081/auth-callback.html',
       scope: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
       response_type: 'code',
@@ -65,8 +72,7 @@ class GoogleAuthService {
 
   async signOut(): Promise<void> {
     try {
-      this.currentUser = null;
-      this.accessToken = null;
+      this.clearStoredAuth();
       
       // Clear any stored OAuth data
       localStorage.removeItem('temp_auth_code');
@@ -83,7 +89,13 @@ class GoogleAuthService {
   }
 
   async isSignedIn(): Promise<boolean> {
-    return !!this.currentUser;
+    const isSignedIn = !!this.currentUser;
+    console.log('🔐 isSignedIn check:', { 
+      hasUser: !!this.currentUser, 
+      userEmail: this.currentUser?.email,
+      hasToken: !!this.accessToken 
+    });
+    return isSignedIn;
   }
 
   getAccessToken(): string | null {
@@ -94,9 +106,48 @@ class GoogleAuthService {
   setAuthenticatedUser(user: GoogleUser, token: string) {
     this.currentUser = user;
     this.accessToken = token;
+    
+    // Store in localStorage for persistence
+    localStorage.setItem('google_auth_user', JSON.stringify(user));
+    localStorage.setItem('google_auth_token', token);
+    
     if (this.accessToken) {
       GoogleDriveService.setAccessToken(this.accessToken);
     }
+  }
+
+  // Load stored authentication from localStorage
+  private loadStoredAuth() {
+    try {
+      const storedUser = localStorage.getItem('google_auth_user');
+      const storedToken = localStorage.getItem('google_auth_token');
+      
+      console.log('🔍 Checking stored auth:', { 
+        hasUser: !!storedUser, 
+        hasToken: !!storedToken,
+        user: storedUser ? JSON.parse(storedUser) : null 
+      });
+      
+      if (storedUser && storedToken) {
+        this.currentUser = JSON.parse(storedUser);
+        this.accessToken = storedToken;
+        GoogleDriveService.setAccessToken(this.accessToken);
+        console.log('✅ Loaded stored authentication for:', this.currentUser?.email);
+      } else {
+        console.log('❌ No stored authentication found');
+      }
+    } catch (error) {
+      console.error('❌ Error loading stored auth:', error);
+      this.clearStoredAuth();
+    }
+  }
+
+  // Clear stored authentication
+  private clearStoredAuth() {
+    localStorage.removeItem('google_auth_user');
+    localStorage.removeItem('google_auth_token');
+    this.currentUser = null;
+    this.accessToken = null;
   }
 
   // Check for OAuth completion when app loads
@@ -128,14 +179,24 @@ class GoogleAuthService {
       console.log('🔄 Processing OAuth authorization code...');
       
       // Exchange authorization code for access token
+      const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.REACT_APP_GOOGLE_CLIENT_SECRET;
+      
+      if (!clientId || !clientSecret) {
+        throw new Error('Google OAuth credentials not found in environment variables');
+      }
+      
+      console.log('🔧 Token exchange - Client ID:', clientId);
+      console.log('🔧 Token exchange - Client Secret: ***');
+      
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_CLIENT_ID',
-          client_secret: process.env.REACT_APP_GOOGLE_CLIENT_SECRET || 'YOUR_CLIENT_SECRET',
+          client_id: clientId,
+          client_secret: clientSecret,
           code: authCode,
           grant_type: 'authorization_code',
           redirect_uri: 'http://localhost:8081/auth-callback.html',
@@ -172,12 +233,9 @@ class GoogleAuthService {
         };
         
         console.log('✅ Real user authenticated:', realUser);
-        this.currentUser = realUser;
         
-        // Pass token to Drive service
-        if (this.accessToken) {
-          GoogleDriveService.setAccessToken(this.accessToken);
-        }
+        // Use setAuthenticatedUser to store in localStorage
+        this.setAuthenticatedUser(realUser, this.accessToken!);
         
         console.log('✅ OAuth completion processed successfully');
       } else {

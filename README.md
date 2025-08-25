@@ -1,156 +1,113 @@
-# Shared Moments - Cross-Platform Photo Slideshow App
+# Shared Moments - Photo Slideshow App
 
-A React Native application for sharing and viewing family photos through Google Drive integration.
+A React Native web application for displaying photos from Google Drive in a beautiful slideshow format.
 
-## 🚀 Features
+## Version 1.0.0 - Initial Release
 
-- **Cross-Platform Support**: iOS, Android, Web, and TV
-- **Photo Slideshow**: Automatic and manual navigation
-- **Google Drive Integration**: Load photos from shared folders
-- **Family Sharing**: Multiple users can access shared photo collections
-- **Responsive Design**: Optimized for all screen sizes and orientations
+### Features
+- ✅ Google Drive OAuth 2.0 Authentication
+- ✅ Photo slideshow with play/pause controls
+- ✅ Full-screen image display with proper aspect ratio
+- ✅ Customizable UI settings (show/hide elements, opacity control)
+- ✅ Persistent settings storage
+- ✅ Responsive design with semi-transparent control bar
 
-## 📱 Platform Support
+### Setup Instructions
 
-### iOS
-- iPhone and iPad optimized
-- Touch gestures and haptic feedback
-- iOS-style animations
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/numansheikh/shared-moments.git
+   cd shared-moments
+   ```
 
-### Android  
-- Phone and tablet support
-- Material Design components
-- Android navigation patterns
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### Web
-- Browser-based slideshow
-- Keyboard navigation support
-- Responsive web design
+3. **Configure Google OAuth**
+   - Create a `.env` file in the root directory
+   - Add your Google OAuth credentials:
+   ```
+   REACT_APP_GOOGLE_CLIENT_ID=your_client_id_here
+   REACT_APP_GOOGLE_CLIENT_SECRET=your_client_secret_here
+   ```
 
-### TV
-- Remote control navigation
-- Large screen optimization
-- Auto-play functionality
+4. **Configure Google Cloud Console**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select existing one
+   - Enable Google Drive API
+   - Create OAuth 2.0 credentials
+   - Add authorized redirect URI: `http://localhost:8081/auth-callback.html`
 
-## 🛠️ Tech Stack
+5. **Run the application**
+   ```bash
+   npm run web
+   ```
 
-- **React Native** - Cross-platform mobile framework
-- **Expo** - Development platform and tools
-- **TypeScript** - Type-safe JavaScript
-- **Google APIs** - Drive integration and OAuth
-- **AsyncStorage** - Local data persistence
+### Usage
 
-## 🚀 Quick Start
+1. **Connect to Google Drive**
+   - Click the settings button (⚙️)
+   - Click "Connect to Google Drive"
+   - Sign in with your Google account
 
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- Expo CLI (optional)
+2. **Configure Shared Folder**
+   - In settings, enter your Google Drive folder URL
+   - Format: `https://drive.google.com/drive/folders/FOLDER_ID`
+   - Click "Save URL"
 
-### Installation
-```bash
-# Clone the repository
-git clone <your-repo-url>
-cd shared-moments
+3. **Customize Display**
+   - Toggle email display on/off
+   - Toggle navigation controls on/off
+   - Toggle photo counter on/off
+   - Adjust top bar opacity (0-100%)
 
-# Install dependencies
-npm install
+### Technical Details
 
-# Start development server
-npm run web      # Web browser
-npm run ios      # iOS simulator
-npm run android  # Android emulator
-```
+- **Framework**: React Native Web with Expo
+- **Authentication**: Google OAuth 2.0 (redirect flow)
+- **Storage**: Google Drive API
+- **State Management**: React hooks with localStorage persistence
+- **Styling**: React Native StyleSheet
 
-## 📁 Project Structure
+### File Structure
 
 ```
 shared-moments/
-├── App.tsx              # Main application component
-├── components/          # Reusable UI components
-├── services/           # Google Drive and API services
-├── hooks/              # Custom React hooks
-├── types/              # TypeScript type definitions
-├── assets/             # Images, fonts, and static files
-└── package.json        # Dependencies and scripts
+├── App.tsx                 # Main application component
+├── components/
+│   └── SettingsDialog.tsx  # Settings modal
+├── services/
+│   ├── GoogleAuthService.ts    # OAuth authentication
+│   └── GoogleDriveService.ts   # Drive API integration
+├── public/
+│   └── auth-callback.html      # OAuth callback page
+└── .env                      # Environment variables (not in git)
 ```
 
-## ☁️ Google Drive Integration
+### Environment Variables
 
-### Architecture
-- **OAuth 2.0 Authentication** - Secure user sign-in
-- **Shared Folder System** - Family photo collections
-- **Permission Management** - Control who can view photos
-- **Real-time Updates** - Sync changes across devices
-
-### Folder Structure
+Create a `.env` file with:
 ```
-📁 Shared Moments (Master Folder)
-├── 📄 sharing_moments_config.json (App Configuration)
-├── 📁 Photos (Family Photos)
-│   ├── 📸 photo1.jpg
-│   ├── 📸 photo2.jpg
-│   └── ...
-└── 📁 Thumbnails (Optimized Images)
+REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id
+REACT_APP_GOOGLE_CLIENT_SECRET=your_google_client_secret
 ```
 
-## 🔧 Development
+### Troubleshooting
 
-### Available Scripts
-- `npm start` - Start Expo development server
-- `npm run web` - Run in web browser
-- `npm run ios` - Run in iOS simulator
-- `npm run android` - Run in Android emulator
-- `npm run build` - Build production app
+- **"OAuth client not found"**: Check your Google Cloud Console configuration
+- **"CORS error"**: Ensure redirect URI matches exactly in Google Cloud Console
+- **"No photos loading"**: Verify folder permissions and URL format
 
-### Hot Reload
-The app automatically reloads when you make changes to the code.
+### Version History
 
-## 📋 Development Roadmap
+- **v1.0.0**: Initial release with core functionality
+  - Google Drive integration
+  - Slideshow controls
+  - Customizable UI
+  - Persistent settings
 
-### Phase 1: Core App ✅
-- [x] Basic slideshow functionality
-- [x] Navigation controls
-- [x] Photo indicators
-- [x] Responsive UI
+### License
 
-### Phase 2: Google Drive Integration 🔄
-- [ ] OAuth authentication
-- [ ] Photo loading from Drive
-- [ ] Shared folder management
-- [ ] Permission system
-
-### Phase 3: Advanced Features 📋
-- [ ] Photo upload
-- [ ] Offline caching
-- [ ] Slideshow themes
-- [ ] Social sharing
-
-### Phase 4: Platform Optimization 📋
-- [ ] iOS-specific features
-- [ ] Android optimization
-- [ ] TV remote support
-- [ ] Web keyboard shortcuts
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test on multiple platforms
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🆘 Support
-
-For support and questions:
-- Create an issue in the repository
-- Check the documentation
-- Review the troubleshooting guide
-
----
-
-**Built with ❤️ using React Native and Expo**
+MIT License

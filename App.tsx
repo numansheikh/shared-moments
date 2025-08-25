@@ -17,13 +17,31 @@ const { width, height } = Dimensions.get('window');
 
 export default function App() {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true); // Start in play mode
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [currentUser, setCurrentUser] = useState<GoogleUser | null>(null);
   const [drivePhotos, setDrivePhotos] = useState<DrivePhoto[]>([]);
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  
+  // UI Settings state
+  const [showEmail, setShowEmail] = useState(() => {
+    const saved = localStorage.getItem('show_email');
+    return saved ? JSON.parse(saved) : true;
+  });
+  const [showControls, setShowControls] = useState(() => {
+    const saved = localStorage.getItem('show_controls');
+    return saved ? JSON.parse(saved) : true;
+  });
+  const [showPhotoCounter, setShowPhotoCounter] = useState(() => {
+    const saved = localStorage.getItem('show_photo_counter');
+    return saved ? JSON.parse(saved) : true;
+  });
+  const [topBarOpacity, setTopBarOpacity] = useState(() => {
+    const saved = localStorage.getItem('top_bar_opacity');
+    return saved ? parseFloat(saved) : 0.25;
+  });
 
   // Check authentication status on app start and periodically
   useEffect(() => {
@@ -76,6 +94,27 @@ export default function App() {
   const handleAuthStateChange = (user: GoogleUser | null) => {
     setCurrentUser(user);
     setIsAuthenticated(!!user);
+  };
+
+  // Settings handlers
+  const handleShowEmailChange = (value: boolean) => {
+    setShowEmail(value);
+    localStorage.setItem('show_email', JSON.stringify(value));
+  };
+
+  const handleShowControlsChange = (value: boolean) => {
+    setShowControls(value);
+    localStorage.setItem('show_controls', JSON.stringify(value));
+  };
+
+  const handleShowPhotoCounterChange = (value: boolean) => {
+    setShowPhotoCounter(value);
+    localStorage.setItem('show_photo_counter', JSON.stringify(value));
+  };
+
+  const handleTopBarOpacityChange = (value: number) => {
+    setTopBarOpacity(value);
+    localStorage.setItem('top_bar_opacity', value.toString());
   };
 
   const loadPhotosFromDrive = async () => {
@@ -139,12 +178,37 @@ export default function App() {
     return photo.thumbnailLink;
   };
 
-  // State for image loading status
-  const [imageLoadStatus, setImageLoadStatus] = useState<{[key: string]: boolean}>({});
+  // State for blob URLs
+  const [blobUrls, setBlobUrls] = useState<{[key: string]: string}>({});
 
-  // Function to mark image as loaded
-  const markImageLoaded = (photoId: string) => {
-    setImageLoadStatus(prev => ({ ...prev, [photoId]: true }));
+  // Function to download image and create blob URL
+  const downloadImageAsBlob = async (photo: any) => {
+    try {
+      const accessToken = GoogleAuthService.getAccessToken();
+      if (!accessToken) return null;
+
+      // Use Google Drive API's alt=media endpoint (designed for this)
+      const imageUrl = `https://www.googleapis.com/drive/v3/files/${photo.id}?alt=media`;
+      console.log('🔄 Downloading image via API:', imageUrl);
+      
+      const response = await fetch(imageUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch image');
+      
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      console.log('✅ Created blob URL:', blobUrl);
+      setBlobUrls(prev => ({ ...prev, [photo.id]: blobUrl }));
+      return blobUrl;
+    } catch (error) {
+      console.error('❌ Error downloading image:', error);
+      return null;
+    }
   };
 
   const renderPhotoContent = () => {
@@ -176,37 +240,36 @@ export default function App() {
       console.log('🔗 webContentLink:', photo.webContentLink);
       console.log('🖼️ thumbnailLink:', photo.thumbnailLink);
       
-      // Try using the webContentLink instead of thumbnailLink
-      const accessToken = GoogleAuthService.getAccessToken();
-      const imageUrl = accessToken ? `${photo.webContentLink}&access_token=${accessToken}` : photo.webContentLink;
+            // Check if we have a blob URL for this photo
+      const blobUrl = blobUrls[photo.id];
       
-      console.log('🎯 Using webContentLink URL:', imageUrl);
-      
-      return (
-        <View style={styles.photoContainer}>
-          <Image
-            source={{ 
-              uri: imageUrl,
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-              }
-            }}
-            style={styles.realPhoto}
-            resizeMode="contain"
-            onLoad={() => {
-              console.log('✅ Image loaded successfully');
-              markImageLoaded(photo.id);
-            }}
-            onError={(error) => {
-              console.error('❌ Image load error:', error);
-              console.log('🔗 Failed URL:', imageUrl);
-              // Try opening in new tab for debugging
-              window.open(imageUrl, '_blank');
-            }}
-          />
-          <Text style={styles.photoCaption}>{photo.name}</Text>
-        </View>
-      );
+      if (blobUrl) {
+        console.log('🎯 Using blob URL:', blobUrl);
+        return (
+          <View style={styles.photoContainer}>
+            <Image
+              source={{ uri: blobUrl }}
+              style={styles.realPhoto}
+              resizeMode="contain"
+              onLoad={() => console.log('✅ Image loaded successfully from blob')}
+            />
+            <View style={styles.filenameOverlay}>
+              <Text style={styles.filenameText}>{photo.name}</Text>
+            </View>
+          </View>
+        );
+      } else {
+        // Download image as blob
+        downloadImageAsBlob(photo);
+        
+        return (
+          <View style={styles.photoContainer}>
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading image...</Text>
+            </View>
+          </View>
+        );
+      }
     }
 
     // Fallback to sample photos
@@ -224,11 +287,39 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       
-      {/* Top Bar */}
-      <View style={styles.topBar}>
-        <Text style={styles.topBarText}>
-          {isAuthenticated ? `Connected as: ${currentUser?.email || 'User'}` : 'Not Connected'}
-        </Text>
+      {/* Top Bar with all controls */}
+      <View style={[styles.topBar, { backgroundColor: `rgba(0,0,0,${topBarOpacity})` }]}>
+        {showEmail && (
+          <Text style={styles.topBarText}>
+            {isAuthenticated ? `Connected as: ${currentUser?.email || 'User'}` : 'Not Connected'}
+          </Text>
+        )}
+        
+        {/* Controls - Only show when we have photos and controls are enabled */}
+        {displayPhotos.length > 0 && showControls && (
+          <View style={styles.topControls}>
+            <TouchableOpacity style={styles.controlButton} onPress={prevPhoto}>
+              <Text style={styles.controlButtonText}>⏮</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.playButton} onPress={togglePlayPause}>
+              <Text style={styles.playButtonText}>
+                {isPlaying ? '⏸' : '▶'}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.controlButton} onPress={nextPhoto}>
+              <Text style={styles.controlButtonText}>⏭</Text>
+            </TouchableOpacity>
+            
+            {showPhotoCounter && (
+              <Text style={styles.photoCounter}>
+                {currentPhotoIndex + 1} / {displayPhotos.length}
+              </Text>
+            )}
+          </View>
+        )}
+        
         <TouchableOpacity 
           style={styles.settingsButton}
           onPress={() => setShowSettings(true)}
@@ -237,52 +328,10 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      {/* Photo Display */}
-      {renderPhotoContent()}
-
-      {/* Controls - Only show when we have photos */}
-      {displayPhotos.length > 0 && (
-        <View style={styles.controls}>
-          <TouchableOpacity style={styles.controlButton} onPress={prevPhoto}>
-            <Text style={styles.controlButtonText}>◀</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.playButton} onPress={togglePlayPause}>
-            <Text style={styles.playButtonText}>
-              {isPlaying ? '⏸️' : '▶️'}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.controlButton} onPress={nextPhoto}>
-            <Text style={styles.controlButtonText}>▶</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Photo Indicators - Only show when we have photos */}
-      {displayPhotos.length > 0 && (
-        <View style={styles.indicators}>
-          {displayPhotos.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.indicator,
-                index === currentPhotoIndex && styles.activeIndicator
-              ]}
-            />
-          ))}
-        </View>
-      )}
-
-      {/* Bottom Info - Only show when we have photos */}
-      {displayPhotos.length > 0 && (
-        <View style={styles.bottomInfo}>
-          <Text style={styles.bottomInfoText}>
-            Photo {currentPhotoIndex + 1} of {displayPhotos.length}
-            {drivePhotos.length > 0 && ' (from Google Drive)'}
-          </Text>
-        </View>
-      )}
+      {/* Photo Display - Full Screen */}
+      <View style={styles.photoDisplayContainer}>
+        {renderPhotoContent()}
+      </View>
 
       {/* Settings Dialog */}
       <SettingsDialog 
@@ -291,6 +340,14 @@ export default function App() {
         isAuthenticated={isAuthenticated}
         userEmail={currentUser?.email}
         onAuthStateChange={handleAuthStateChange}
+        showEmail={showEmail}
+        onShowEmailChange={handleShowEmailChange}
+        showControls={showControls}
+        onShowControlsChange={handleShowControlsChange}
+        showPhotoCounter={showPhotoCounter}
+        onShowPhotoCounterChange={handleShowPhotoCounterChange}
+        topBarOpacity={topBarOpacity}
+        onTopBarOpacityChange={handleTopBarOpacityChange}
       />
     </SafeAreaView>
   );
@@ -305,25 +362,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    height: 30,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+  },
+  topControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  photoDisplayContainer: {
+    flex: 1,
+  },
+  photoCounter: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '500',
+    marginLeft: 6,
   },
   topBarText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '500',
   },
   settingsButton: {
-    padding: 8,
+    padding: 4,
   },
   settingsButtonText: {
-    fontSize: 24,
+    fontSize: 18,
   },
   photoContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    position: 'relative',
   },
   photoIcon: {
     fontSize: 80,
@@ -350,20 +426,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.8)',
   },
   controlButton: {
-    padding: 20,
-    marginHorizontal: 20,
+    padding: 8,
+    marginHorizontal: 8,
   },
   controlButtonText: {
-    fontSize: 32,
+    fontSize: 20,
     color: '#fff',
   },
   playButton: {
-    padding: 25,
-    backgroundColor: 'rgba(59, 130, 246, 0.8)',
-    borderRadius: 50,
+    padding: 6,
   },
   playButtonText: {
-    fontSize: 36,
+    fontSize: 20,
+    color: '#fff',
   },
   indicators: {
     flexDirection: 'row',
@@ -438,14 +513,29 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   realPhoto: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
     width: '100%',
     height: '100%',
-    borderRadius: 10,
   },
   photoCaption: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 16,
     marginTop: 10,
     textAlign: 'center',
+  },
+  filenameOverlay: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+  },
+  filenameText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
 });
