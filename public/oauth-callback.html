@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OAuth Callback - Sharing Moments</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: #1f2937;
+            color: white;
+        }
+        .container {
+            background: #374151;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .success {
+            color: #10B981;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .message {
+            color: #9ca3af;
+            margin-bottom: 20px;
+        }
+        .close-btn {
+            background: #3B82F6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .code-display {
+            background: #1f2937;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 20px 0;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success">🔐 OAuth Callback</div>
+        <div class="message">Processing Google authentication...</div>
+        <div id="status">Checking authorization...</div>
+    </div>
+
+    <script>
+        console.log('🔐 OAuth callback page loaded');
+        
+        // Extract the authorization code from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const authCode = urlParams.get('code');
+        const error = urlParams.get('error');
+        
+        if (error) {
+            console.error('❌ OAuth error:', error);
+            document.getElementById('status').innerHTML = `❌ Authentication failed: ${error}`;
+            document.getElementById('status').style.color = '#EF4444';
+            return;
+        }
+        
+        if (authCode) {
+            console.log('✅ Authorization code received:', authCode.substring(0, 20) + '...');
+            
+            // Store the auth code in localStorage for the main app to process
+            localStorage.setItem('temp_auth_code', authCode);
+            localStorage.setItem('oauth_completion_time', Date.now().toString());
+            
+            // Show success status
+            document.getElementById('status').innerHTML = `
+                ✅ Authorization successful!<br>
+                <div class="code-display">Code: ${authCode.substring(0, 30)}...</div>
+                <small>This window will close automatically</small>
+            `;
+            document.getElementById('status').style.color = '#10B981';
+            
+            // Notify the main app that OAuth is complete
+            try {
+                // Try to send a message to the parent window
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'OAUTH_COMPLETE',
+                        code: authCode
+                    }, '*');
+                }
+            } catch (e) {
+                console.log('Could not notify parent window:', e);
+            }
+            
+            // Close the popup after a short delay
+            setTimeout(() => {
+                console.log('🔐 Closing OAuth popup');
+                window.close();
+            }, 3000);
+            
+        } else {
+            console.error('❌ No authorization code found');
+            document.getElementById('status').innerHTML = '❌ No authorization code received';
+            document.getElementById('status').style.color = '#EF4444';
+        }
+    </script>
+</body>
+</html>

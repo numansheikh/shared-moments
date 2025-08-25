@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
+    <title>OAuth Callback - Sharing Moments</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: #2a2a2a;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading">
+            <div class="spinner"></div>
+            <h2>Processing authentication...</h2>
+            <p>Please wait while we complete your sign-in.</p>
+        </div>
+        
+        <div id="success" style="display: none;">
+            <h2 class="success">✅ Authentication Successful!</h2>
+            <p>You have been successfully signed in to Sharing Moments.</p>
+            <p>Redirecting back to the app...</p>
+        </div>
+        
+        <div id="error" style="display: none;">
+            <h2 class="error">❌ Authentication Failed</h2>
+            <p id="errorMessage">An error occurred during authentication.</p>
+            <button onclick="window.close()">Close Window</button>
+        </div>
+    </div>
+
+    <script>
+        // Simple OAuth callback handler
+        (function() {
+            try {
+                // Extract the authorization code from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const authCode = urlParams.get('code');
+                const error = urlParams.get('error');
+                
+                if (error) {
+                    // Handle OAuth error
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('errorMessage').textContent = `Error: ${error}`;
+                } else if (authCode) {
+                    // Process the authorization code
+                    console.log('🔑 Authorization code received');
+                    
+                    // Store the code temporarily
+                    localStorage.setItem('temp_auth_code', authCode);
+                    localStorage.setItem('oauth_completion_time', Date.now().toString());
+                    
+                    // Show success message
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('success').style.display = 'block';
+                    
+                    // Redirect back to main app after a short delay
+                    setTimeout(function() {
+                        window.location.href = 'http://localhost:8081/';
+                    }, 2000);
+                    
+                } else {
+                    // No code or error parameter
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('errorMessage').textContent = 'No authorization code received from Google.';
+                }
+            } catch (e) {
+                console.error('Callback error:', e);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('errorMessage').textContent = 'An error occurred during authentication.';
+            }
+        })();
+    </script>
+</body>
+</html>
