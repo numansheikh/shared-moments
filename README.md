@@ -2,7 +2,7 @@
 
 A React Native web application for displaying photos from Google Drive in a beautiful slideshow format.
 
-## Version 1.0.0 - Initial Release
+## Version 0.0.1 - Initial Beta Release
 
 ### Features
 - ✅ Google Drive OAuth 2.0 Authentication
@@ -102,7 +102,7 @@ REACT_APP_GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 ### Version History
 
-- **v1.0.0**: Initial release with core functionality
+- **v0.0.1**: Initial beta release with core functionality
   - Google Drive integration
   - Slideshow controls
   - Customizable UI
