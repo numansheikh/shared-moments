@@ -135,6 +135,32 @@ class GoogleDriveService {
       throw error;
     }
   }
+
+  async listFoldersInFolder(folderId: string): Promise<any[]> {
+    try {
+      console.log('📁 Listing folders in folder:', folderId);
+      
+      const params: Record<string, string> = {
+        q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+        fields: 'files(id,name,mimeType)',
+        pageSize: '100',
+      };
+
+      const response = await this.makeDriveRequest('files', params);
+      
+      console.log(`✅ Found ${response.files.length} folders`);
+      
+      return response.files.map((folder: any) => ({
+        id: folder.id,
+        name: folder.name,
+        mimeType: folder.mimeType,
+      }));
+
+    } catch (error) {
+      console.error('❌ Error listing folders:', error);
+      throw error;
+    }
+  }
 }
 
 export default new GoogleDriveService();

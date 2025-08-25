@@ -42,6 +42,7 @@ export default function App() {
     const saved = localStorage.getItem('top_bar_opacity');
     return saved ? parseFloat(saved) : 0.25;
   });
+  const [selectedFoldersVersion, setSelectedFoldersVersion] = useState(0);
 
   // Check authentication status on app start and periodically
   useEffect(() => {
@@ -75,8 +76,25 @@ export default function App() {
     } else {
       setDrivePhotos([]);
       setPhotoError(null);
+      setCurrentPhotoIndex(0);
     }
   }, [isAuthenticated]);
+
+  // Reload photos when selected folders change
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadPhotosFromDrive();
+    }
+  }, [selectedFoldersVersion]);
+
+  // Reset photo index when photos change
+  useEffect(() => {
+    if (drivePhotos.length === 0) {
+      setCurrentPhotoIndex(0);
+    } else if (currentPhotoIndex >= drivePhotos.length || currentPhotoIndex < 0) {
+      setCurrentPhotoIndex(0);
+    }
+  }, [drivePhotos.length, currentPhotoIndex]);
 
   const checkAuthStatus = async () => {
     try {
@@ -117,6 +135,10 @@ export default function App() {
     localStorage.setItem('top_bar_opacity', value.toString());
   };
 
+  const handleFoldersChanged = () => {
+    setSelectedFoldersVersion(prev => prev + 1);
+  };
+
   const loadPhotosFromDrive = async () => {
     try {
       setIsLoadingPhotos(true);
@@ -129,13 +151,41 @@ export default function App() {
         return;
       }
 
-      console.log('📁 Loading photos from:', savedUrl);
+      // Get selected folders
+      const selectedFolders = localStorage.getItem('selected_folders');
+      const folderIds = selectedFolders ? JSON.parse(selectedFolders) : ['root'];
+
+      console.log('📁 Loading photos from folders:', folderIds);
       
-      // Load photos from Google Drive
-      const photos = await GoogleDriveService.listPhotosInFolder(savedUrl);
-      setDrivePhotos(photos);
-      
-      console.log(`✅ Loaded ${photos.length} photos from Drive`);
+      // Extract root folder ID from URL
+      const folderIdMatch = savedUrl.match(/\/folders\/([^/?]+)/);
+      if (!folderIdMatch) {
+        setPhotoError('Invalid folder URL format.');
+        return;
+      }
+
+      const rootFolderId = folderIdMatch[1];
+      let allPhotos: DrivePhoto[] = [];
+
+      // Load photos from each selected folder
+      for (const folderId of folderIds) {
+        try {
+          const actualFolderId = folderId === 'root' ? rootFolderId : folderId;
+          const photos = await GoogleDriveService.listPhotosInFolder(actualFolderId);
+          allPhotos = [...allPhotos, ...photos];
+          console.log(`✅ Loaded ${photos.length} photos from folder ${folderId}`);
+        } catch (error) {
+          console.error(`❌ Error loading photos from folder ${folderId}:`, error);
+        }
+      }
+
+      // Remove duplicates based on photo ID
+      const uniquePhotos = allPhotos.filter((photo, index, self) => 
+        index === self.findIndex(p => p.id === photo.id)
+      );
+
+      setDrivePhotos(uniquePhotos);
+      console.log(`✅ Loaded ${uniquePhotos.length} total photos from ${folderIds.length} folders`);
       
     } catch (error) {
       console.error('❌ Error loading photos:', error);
@@ -169,8 +219,23 @@ export default function App() {
   }, [isPlaying, drivePhotos.length]);
 
   const togglePlayPause = () => setIsPlaying(!isPlaying);
-  const nextPhoto = () => setCurrentPhotoIndex((prev) => (prev + 1) % displayPhotos.length);
-  const prevPhoto = () => setCurrentPhotoIndex((prev) => (prev - 1 + displayPhotos.length) % displayPhotos.length);
+  const nextPhoto = () => {
+    if (displayPhotos.length > 0) {
+      setCurrentPhotoIndex((prev) => {
+        const newIndex = (prev + 1) % displayPhotos.length;
+        return newIndex >= 0 && newIndex < displayPhotos.length ? newIndex : 0;
+      });
+    }
+  };
+  
+  const prevPhoto = () => {
+    if (displayPhotos.length > 0) {
+      setCurrentPhotoIndex((prev) => {
+        const newIndex = (prev - 1 + displayPhotos.length) % displayPhotos.length;
+        return newIndex >= 0 && newIndex < displayPhotos.length ? newIndex : 0;
+      });
+    }
+  };
 
   // Helper function to get reliable image URL
   const getImageUrl = (photo: any) => {
@@ -234,6 +299,19 @@ export default function App() {
     if (drivePhotos.length > 0) {
       // Real photo from Drive
       const photo = drivePhotos[currentPhotoIndex];
+      
+      // Safety check for undefined photo
+      if (!photo) {
+        console.log('⚠️ Photo is undefined, resetting index');
+        setCurrentPhotoIndex(0);
+        return (
+          <View style={styles.photoContainer}>
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+          </View>
+        );
+      }
       
       // Debug: Log the photo data
       console.log('📸 Current photo:', photo);
@@ -348,6 +426,7 @@ export default function App() {
         onShowPhotoCounterChange={handleShowPhotoCounterChange}
         topBarOpacity={topBarOpacity}
         onTopBarOpacityChange={handleTopBarOpacityChange}
+        onFoldersChanged={handleFoldersChanged}
       />
     </SafeAreaView>
   );
