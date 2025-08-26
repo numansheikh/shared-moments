@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import GoogleAuthService, { GoogleUser } from '../services/GoogleAuthService';
 import GoogleDriveService from '../services/GoogleDriveService';
+import Storage from '../utils/storage';
 
 const { width } = Dimensions.get('window');
 
@@ -76,9 +77,9 @@ export default function SettingsDialog({
     }
   }, [visible, isAuthenticated, activeTab]);
 
-  const loadSavedUrl = () => {
+  const loadSavedUrl = async () => {
     try {
-      const savedUrl = localStorage.getItem('shared_moments_folder_url');
+      const savedUrl = await Storage.getItem('shared_moments_folder_url');
       if (savedUrl) {
         setSharedFolderUrl(savedUrl);
         console.log('📁 Loaded saved URL:', savedUrl);
@@ -94,7 +95,7 @@ export default function SettingsDialog({
       console.log('📁 Loading folders from Google Drive...');
       
       // Get the saved shared folder URL
-      const savedUrl = localStorage.getItem('shared_moments_folder_url');
+      const savedUrl = await Storage.getItem('shared_moments_folder_url');
       if (!savedUrl) {
         console.log('❌ No root folder URL configured');
         return;
@@ -122,9 +123,9 @@ export default function SettingsDialog({
     }
   };
 
-  const loadSelectedFolders = () => {
+  const loadSelectedFolders = async () => {
     try {
-      const saved = localStorage.getItem('selected_folders');
+      const saved = await Storage.getItem('selected_folders');
       if (saved) {
         const folders = JSON.parse(saved);
         setSelectedFolders(folders);

@@ -12,8 +12,11 @@ import {
 import SettingsDialog from './components/SettingsDialog';
 import GoogleAuthService, { GoogleUser } from './services/GoogleAuthService';
 import GoogleDriveService, { DrivePhoto } from './services/GoogleDriveService';
+import Storage from './utils/storage';
 
 const { width, height } = Dimensions.get('window');
+const isTablet = width > 600;
+const isLandscape = width > height;
 
 export default function App() {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -26,37 +29,15 @@ export default function App() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   
   // UI Settings state
-  const [showEmail, setShowEmail] = useState(() => {
-    const saved = localStorage.getItem('show_email');
-    return saved ? JSON.parse(saved) : true;
-  });
-  const [showControls, setShowControls] = useState(() => {
-    const saved = localStorage.getItem('show_controls');
-    return saved ? JSON.parse(saved) : true;
-  });
-  const [showPhotoCounter, setShowPhotoCounter] = useState(() => {
-    const saved = localStorage.getItem('show_photo_counter');
-    return saved ? JSON.parse(saved) : true;
-  });
-  const [topBarOpacity, setTopBarOpacity] = useState(() => {
-    const saved = localStorage.getItem('top_bar_opacity');
-    return saved ? parseFloat(saved) : 0.25;
-  });
+  const [showEmail, setShowEmail] = useState(true);
+  const [showControls, setShowControls] = useState(true);
+  const [showPhotoCounter, setShowPhotoCounter] = useState(true);
+  const [topBarOpacity, setTopBarOpacity] = useState(0.25);
   const [selectedFoldersVersion, setSelectedFoldersVersion] = useState(0);
 
   // Check authentication status on app start and periodically
   useEffect(() => {
     checkAuthStatus();
-    
-    // Listen for OAuth completion messages
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'OAUTH_COMPLETE') {
-        console.log('🔐 Received OAuth completion message');
-        setTimeout(() => checkAuthStatus(), 1000); // Check after a short delay
-      }
-    };
-    
-    window.addEventListener('message', handleMessage);
     
     // Check for OAuth completion periodically
     const interval = setInterval(() => {
@@ -64,7 +45,6 @@ export default function App() {
     }, 2000);
     
     return () => {
-      window.removeEventListener('message', handleMessage);
       clearInterval(interval);
     };
   }, []);
@@ -117,22 +97,22 @@ export default function App() {
   // Settings handlers
   const handleShowEmailChange = (value: boolean) => {
     setShowEmail(value);
-    localStorage.setItem('show_email', JSON.stringify(value));
+    Storage.setItem('show_email', JSON.stringify(value));
   };
 
   const handleShowControlsChange = (value: boolean) => {
     setShowControls(value);
-    localStorage.setItem('show_controls', JSON.stringify(value));
+    Storage.setItem('show_controls', JSON.stringify(value));
   };
 
   const handleShowPhotoCounterChange = (value: boolean) => {
     setShowPhotoCounter(value);
-    localStorage.setItem('show_photo_counter', JSON.stringify(value));
+    Storage.setItem('show_photo_counter', JSON.stringify(value));
   };
 
   const handleTopBarOpacityChange = (value: number) => {
     setTopBarOpacity(value);
-    localStorage.setItem('top_bar_opacity', value.toString());
+    Storage.setItem('top_bar_opacity', value.toString());
   };
 
   const handleFoldersChanged = () => {
@@ -145,14 +125,14 @@ export default function App() {
       setPhotoError(null);
       
       // Get the saved shared folder URL
-      const savedUrl = localStorage.getItem('shared_moments_folder_url');
+      const savedUrl = await Storage.getItem('shared_moments_folder_url');
       if (!savedUrl) {
         setPhotoError('No shared folder URL configured. Please set it in Settings.');
         return;
       }
 
       // Get selected folders
-      const selectedFolders = localStorage.getItem('selected_folders');
+      const selectedFolders = await Storage.getItem('selected_folders');
       const folderIds = selectedFolders ? JSON.parse(selectedFolders) : ['root'];
 
       console.log('📁 Loading photos from folders:', folderIds);
@@ -331,9 +311,6 @@ export default function App() {
               resizeMode="contain"
               onLoad={() => console.log('✅ Image loaded successfully from blob')}
             />
-            <View style={styles.filenameOverlay}>
-              <Text style={styles.filenameText}>{photo.name}</Text>
-            </View>
           </View>
         );
       } else {
@@ -354,62 +331,87 @@ export default function App() {
     const samplePhoto = currentPhoto as any; // Type assertion for sample photos
     return (
       <View style={[styles.photoContainer, { backgroundColor: samplePhoto.color }]}>
-        <Text style={styles.photoIcon}>{samplePhoto.icon}</Text>
-        <Text style={styles.photoText}>{samplePhoto.text}</Text>
-        <Text style={styles.photoSubtext}>Gradient Placeholder</Text>
+        <View style={styles.samplePhotoContent}>
+          <Text style={[styles.photoIcon, { fontSize: isTablet ? 120 : 80 }]}>{samplePhoto.icon}</Text>
+          <Text style={[styles.photoText, { fontSize: isTablet ? 64 : 48 }]}>{samplePhoto.text}</Text>
+          <Text style={[styles.photoSubtext, { fontSize: isTablet ? 24 : 18 }]}>Gradient Placeholder</Text>
+        </View>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar style="light" />
+      <SafeAreaView style={styles.safeArea}>
       
-      {/* Top Bar with all controls */}
-      <View style={[styles.topBar, { backgroundColor: `rgba(0,0,0,${topBarOpacity})` }]}>
-        {showEmail && (
-          <Text style={styles.topBarText}>
-            {isAuthenticated ? `Connected as: ${currentUser?.email || 'User'}` : 'Not Connected'}
+      {/* Top Bar with filename only */}
+      <View style={[
+        styles.topBar, 
+        { 
+          backgroundColor: `rgba(0,0,0,${topBarOpacity})`,
+          height: isTablet ? 40 : 30,
+          paddingHorizontal: isTablet ? 20 : 15,
+          width: '100%',
+          justifyContent: 'center',
+        }
+      ]}>
+        {/* Show filename at top */}
+        {drivePhotos.length > 0 && currentPhoto && 'name' in currentPhoto && (
+          <Text style={[styles.topBarText, { fontSize: isTablet ? 16 : 13 }]}>
+            {currentPhoto.name}
           </Text>
         )}
         
-        {/* Controls - Only show when we have photos and controls are enabled */}
-        {displayPhotos.length > 0 && showControls && (
-          <View style={styles.topControls}>
-            <TouchableOpacity style={styles.controlButton} onPress={prevPhoto}>
-              <Text style={styles.controlButtonText}>⏮</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.playButton} onPress={togglePlayPause}>
-              <Text style={styles.playButtonText}>
-                {isPlaying ? '⏸' : '▶'}
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.controlButton} onPress={nextPhoto}>
-              <Text style={styles.controlButtonText}>⏭</Text>
-            </TouchableOpacity>
-            
-            {showPhotoCounter && (
-              <Text style={styles.photoCounter}>
-                {currentPhotoIndex + 1} / {displayPhotos.length}
-              </Text>
-            )}
-          </View>
-        )}
-        
-        <TouchableOpacity 
-          style={styles.settingsButton}
-          onPress={() => setShowSettings(true)}
-        >
-          <Text style={styles.settingsButtonText}>⚙️</Text>
-        </TouchableOpacity>
+
       </View>
 
       {/* Photo Display - Full Screen */}
       <View style={styles.photoDisplayContainer}>
         {renderPhotoContent()}
       </View>
+
+      {/* Controls 100px above bottom */}
+      {displayPhotos.length > 0 && (
+        <View style={[
+          styles.bottomControlsBar, 
+          { 
+            backgroundColor: `rgba(0,0,0,${topBarOpacity})`,
+            height: isTablet ? 60 : 50,
+            paddingHorizontal: isTablet ? 20 : 15,
+          }
+        ]}>
+          <View style={styles.bottomControls}>
+            <TouchableOpacity style={[styles.controlButton, { padding: isTablet ? 12 : 8 }]} onPress={prevPhoto}>
+              <Text style={[styles.controlButtonText, { fontSize: isTablet ? 24 : 20 }]}>⏮</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={[styles.playButton, { padding: isTablet ? 10 : 6 }]} onPress={togglePlayPause}>
+              <Text style={[styles.playButtonText, { fontSize: isTablet ? 24 : 20 }]}>
+                {isPlaying ? '⏸' : '▶'}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={[styles.controlButton, { padding: isTablet ? 12 : 8 }]} onPress={nextPhoto}>
+              <Text style={[styles.controlButtonText, { fontSize: isTablet ? 24 : 20 }]}>⏭</Text>
+            </TouchableOpacity>
+            
+            {showPhotoCounter && (
+              <Text style={[styles.photoCounter, { fontSize: isTablet ? 14 : 11 }]}>
+                {currentPhotoIndex + 1} / {displayPhotos.length}
+              </Text>
+            )}
+            
+            <TouchableOpacity 
+              style={[styles.settingsButton, { padding: isTablet ? 8 : 4, marginLeft: 20 }]}
+              onPress={() => setShowSettings(true)}
+            >
+              <Text style={[styles.settingsButtonText, { fontSize: isTablet ? 22 : 18 }]}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
 
       {/* Settings Dialog */}
       <SettingsDialog 
@@ -428,7 +430,8 @@ export default function App() {
         onTopBarOpacityChange={handleTopBarOpacityChange}
         onFoldersChanged={handleFoldersChanged}
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -437,27 +440,74 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
+  safeArea: {
+    flex: 1,
+  },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: 15,
     paddingVertical: 5,
     backgroundColor: 'rgba(0,0,0,0.25)',
-    height: 30,
+    height: 50,
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 1000,
+    minHeight: 50,
+    width: '100%',
+    paddingTop: 50, // Add padding for status bar
   },
   topControls: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  bottomBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    height: 50,
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    zIndex: 1000,
+    minHeight: 50,
+    width: 'auto',
+  },
+  bottomControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  bottomControlsBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    height: 50,
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    minHeight: 50,
+    width: '100%',
   },
   photoDisplayContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   photoCounter: {
     color: '#fff',
@@ -483,6 +533,7 @@ const styles = StyleSheet.create({
   photoIcon: {
     fontSize: 80,
     marginBottom: 20,
+    textAlign: 'center',
   },
   photoText: {
     fontSize: 48,
@@ -492,10 +543,17 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
+    textAlign: 'center',
   },
   photoSubtext: {
     fontSize: 18,
     color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+  },
+  samplePhotoContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   controls: {
     flexDirection: 'row',
