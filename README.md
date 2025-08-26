@@ -2,6 +2,34 @@
 
 A React Native web application for displaying photos from Google Drive in a beautiful slideshow format.
 
+## Version 0.1.1 - Mobile UI Improvements
+
+### ✅ **What's New:**
+- **Mobile-optimized UI** - Responsive design for phones and tablets
+- **Mock authentication** - Demo mode without Google Drive dependency
+- **Improved controls** - Bottom-positioned controls (100px from bottom)
+- **Better positioning** - Right-aligned top bar, avoids system UI
+- **Cross-platform storage** - AsyncStorage for mobile compatibility
+- **Landscape support** - Works in both orientations
+
+### 🎨 **UI Improvements:**
+- **Top bar**: Filename display only
+- **Bottom controls**: Play/pause/next buttons + settings
+- **Responsive sizing**: Larger buttons on tablets
+- **Touch-friendly**: Better touch targets and spacing
+
+### 🔧 **Technical Fixes:**
+- **Removed web dependencies** - No more localStorage issues
+- **Fixed crashes** - Proper mobile storage implementation
+- **Better error handling** - Graceful fallbacks
+
+### 📱 **Platform Support:**
+- **Android**: Fully tested with Expo Go
+- **iOS**: Ready for testing
+- **Tablet**: Responsive design optimized
+
+---
+
 ## Version 0.1.0 - Folder Selection Release
 
 ### Features
